@@ -156,7 +156,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42, help="A seed for reproducible training.")
     parser.add_argument("--k_shot", default=-1, type=int, help="-1 denotes full-shot")
     parser.add_argument("--use_ngram", default=True, type=bool, help="If True, will extract ngrams and use them.")
-    parser.add_argument("--api_key", type=str, default="" , help="GPT-3 API KEY")
+    parser.add_argument("--api_key", type=str, default="", help="GPT-3 API KEY")
     parser.add_argument("--api_limit", type=int, default=8000 , help="The limit of the GPT-3 API request")
 
     args = parser.parse_args()

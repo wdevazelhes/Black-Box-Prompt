@@ -117,10 +117,18 @@ def solve_v_total_exact(prompt_emb):
             a = v
     return v, itr
 
-def constrainScoreByWholeExact(prompt_embeds):
-    for i in range(len(prompt_embeds)):
-        v, itr = solve_v_total_exact(prompt_embeds[i])
-        prompt_embeds[i].sub_(v).clamp_(0, 1)
+def constrainScoreByWholeExact(prompt_probs):
+    for i in range(len(prompt_probs)):
+        v, itr = solve_v_total_exact(prompt_probs[i])
+        prompt_probs[i].sub_(v).clamp_(0, 1)
+
+def constrainScoreByKLProjection(prompts_probs):
+    prompts_probs_sum = prompts_probs.sum(dim=-1, keepdim=True)
+    normalized_probs = prompts_probs / prompts_probs_sum
+    normalized_probs = normalized_probs.clamp(0, 1)
+    prompts_probs.copy_(normalized_probs)
+
+
     
 def parse_args():
     parser = argparse.ArgumentParser(description="Finetune a transformers model on a text classification task")
@@ -156,6 +164,7 @@ def parse_args():
     parser.add_argument("--k_shot", default=-1, type=int, help="-1 denotes full-shot")
     parser.add_argument("--use_ngram", default=True, type=bool, help="If True, will extract ngrams and use them.")
     parser.add_argument("--api_limit", type=int, default=8000 , help="The limit of the API request")
+    parser.add_argument("--projection_type", default="Euclidean", choices=["Euclidean", "KL"], help="Projection type to be used.")
     args = parser.parse_args()
 
     args.train_file = './dataset/' + args.file_name + '/train.csv' if args.file_name else None
@@ -620,7 +629,13 @@ def main():
                     
                     torch.nn.utils.clip_grad_norm_(prompts_probs, 3)
                     prompt_optimizer.step()
-                    constrainScoreByWholeExact(prompts_probs)
+                    # After computing gradients
+                    if args.projection_type == "Euclidean":
+                        constrainScoreByWholeExact(prompts_probs)
+                    elif args.projection_type == "KL":
+                        constrainScoreByKLProjection(prompts_probs)
+
+                    # constrainScoreByWholeExact(prompts_probs)
                     
                     if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                         progress_bar.update(1)

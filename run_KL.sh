@@ -8,9 +8,8 @@
 # --sample_size 20 --prompt_length 10 \
 # --prompt_search_space 200 \
 # --api_limit 8000 --ce_loss True \
-# --projection_type Euclidean
+# --projection_type KL
 
-# Array of seeds
 seeds=(1)
 
 # Loop through each seed and run the experiment
@@ -25,9 +24,8 @@ for seed in "${seeds[@]}"; do
     --sample_size 20 --prompt_length 10 \
     --prompt_search_space 200 \
     --api_limit 8000 --ce_loss True \
-    --projection_type Euclidean
+    --projection_type KL
 done
-
 
 # # GPT-based experiments
 # python ./run_glue_discrete_GPT.py \

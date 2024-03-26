@@ -122,6 +122,16 @@ def constrainScoreByWholeExact(prompt_probs):
         v, itr = solve_v_total_exact(prompt_probs[i])
         prompt_probs[i].sub_(v).clamp_(0, 1)
 
+def exponential_gradient_update(pi, gradients, learning_rate):
+    # Apply exponential update
+    updated_pi = pi * torch.exp(-learning_rate * gradients)
+    
+    # Normalize to get a probability distribution
+    normalized_pi = updated_pi / updated_pi.sum(dim=-1, keepdim=True)
+    normalized_pi = normalized_pi.clamp(0, 1)
+    
+    return normalized_pi
+
 def constrainScoreByKLProjection(prompts_probs):
     prompts_probs_sum = prompts_probs.sum(dim=-1, keepdim=True)
     normalized_probs = prompts_probs / prompts_probs_sum
@@ -231,7 +241,9 @@ def main():
 
     if args.use_wandb:
         args.group_name = "RoBERTa_BDPL_" + task_name
-        wandb.init(config=args, project="blackbox_prompt", group=args.group_name)
+        wandb.init(config=args, 
+                   name=args.projection_type+"-"+args.task_name+"-seed"+str(args.seed), 
+                   project="blackbox_prompt", group=args.group_name)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     accelerator = Accelerator()
@@ -628,12 +640,18 @@ def main():
                         prompts_probs.grad += 1 / (args.sample_size - 1) * (loss_list[k] - loss_avg) * derivative[k]
                     
                     torch.nn.utils.clip_grad_norm_(prompts_probs, 3)
-                    prompt_optimizer.step()
+                    
                     # After computing gradients
                     if args.projection_type == "Euclidean":
+                        prompt_optimizer.step()
                         constrainScoreByWholeExact(prompts_probs)
                     elif args.projection_type == "KL":
-                        constrainScoreByKLProjection(prompts_probs)
+                        # eta = prompt_optimizer.param_groups[0]['lr']
+                        eta = args.prompt_learning_rate
+                        grad = prompts_probs.grad
+                        prompts_probs.mul_(-eta * grad).exp_()  # Exponential gradient descent update 
+                        prompts_probs.div_(prompts_probs.sum(dim=-1, keepdim=True))  
+                        # constrainScoreByKLProjection(prompts_probs)
 
                     # constrainScoreByWholeExact(prompts_probs)
                     

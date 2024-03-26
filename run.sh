@@ -11,7 +11,7 @@
 # --projection_type Euclidean
 
 # Array of seeds
-seeds=(1)
+seeds=(10 20)
 
 # Loop through each seed and run the experiment
 for seed in "${seeds[@]}"; do

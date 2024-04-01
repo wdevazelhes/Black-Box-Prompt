@@ -10,7 +10,7 @@
 # --api_limit 8000 --ce_loss True \
 # --projection_type KL
 
-seeds=(10 20)
+seeds=(3407)
 
 # Loop through each seed and run the experiment
 for seed in "${seeds[@]}"; do

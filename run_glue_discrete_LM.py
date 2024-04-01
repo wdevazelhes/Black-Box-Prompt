@@ -649,7 +649,7 @@ def main():
                         # eta = prompt_optimizer.param_groups[0]['lr']
                         eta = args.prompt_learning_rate
                         grad = prompts_probs.grad
-                        prompts_probs.mul_(-eta * grad).exp_()  # Exponential gradient descent update 
+                        prompts_probs.mul_((-eta * grad).exp_())  # Exponential gradient descent update 
                         prompts_probs.div_(prompts_probs.sum(dim=-1, keepdim=True))  
                         # constrainScoreByKLProjection(prompts_probs)
 

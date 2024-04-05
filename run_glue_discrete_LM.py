@@ -121,6 +121,10 @@ def constrainScoreByWholeExact(prompt_probs):
     for i in range(len(prompt_probs)):
         v, itr = solve_v_total_exact(prompt_probs[i])
         prompt_probs[i].sub_(v).clamp_(0, 1)
+        
+        
+# def constrain_by_sparsity(prompt_probs):
+    
 
 def exponential_gradient_update(pi, gradients, learning_rate):
     # Apply exponential update

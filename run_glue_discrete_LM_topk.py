@@ -243,7 +243,7 @@ def main():
     if args.use_wandb:
         args.group_name = "RoBERTa_BDPL_" + task_name
         wandb.init(config=args, 
-                   name=args.projection_type+"-"+args.task_name+"-seed"+str(args.seed), 
+                   name=args.projection_type+"-"+args.task_name+"-seed"+str(args.seed)+'topk', 
                    project="blackbox_prompt", group=args.group_name)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
@@ -877,7 +877,7 @@ def test(args, model, test_dataloader, metric, accelerator, epoch, results, prom
         logger.info(f"epoch {epoch}: {test_metric}")
         if args.use_wandb:
             for key in test_metric.keys():
-                eval_key = 'Black_test_TOPK' + key
+                eval_key = 'Black_test_' + key
                 wandb.log({eval_key: test_metric[key]})
             if args.task_name == 'mnli':
                 for key in test_metric_mm.keys():

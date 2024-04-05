@@ -8,16 +8,14 @@
 # --sample_size 20 --prompt_length 10 \
 # --prompt_search_space 200 \
 # --api_limit 8000 --ce_loss True \
-# --projection_type Euclidean
+# --projection_type KL
 
-# Array of seeds
-seeds=(123 42 20 10 1)
-# seeds=(3407)
+seeds=(3407)
 
 # Loop through each seed and run the experiment
 for seed in "${seeds[@]}"; do
     echo "Running experiment with seed $seed"
-    python ./run_glue_discrete_LM_topk.py \
+    python ./run_glue_discrete_LM.py \
     --task_name=mrpc \
     --per_device_train_batch_size 128 \
     --per_device_eval_batch_size 16 \
@@ -26,9 +24,8 @@ for seed in "${seeds[@]}"; do
     --sample_size 20 --prompt_length 10 \
     --prompt_search_space 200 \
     --api_limit 8000 --ce_loss True \
-    --projection_type Euclidean
+    --projection_type sparse
 done
-
 
 # # GPT-based experiments
 # python ./run_glue_discrete_GPT.py \

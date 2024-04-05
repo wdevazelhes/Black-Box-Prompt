@@ -645,21 +645,20 @@ def main():
                     
                     
                     
-                    # if epoch == args.num_train_epochs // 2:   # maybe rather take the best from all previous training, though that would somehow break the coherence with other methods
-                    if epoch == 1:   # maybe rather take the best from all previous training, though that would somehow break the coherence with other methods
+                    if epoch == args.num_train_epochs // 2:   # maybe rather take the best from all previous training, though that would somehow break the coherence with other methods
+                    # if epoch == 1:   # maybe rather take the best from all previous training, though that would somehow break the coherence with other methods
                         smallest_k_idces = torch.topk(prompts_probs, k=prompt_search_space - args.kvoc, dim=1, largest=False).indices
                         
-                    # if epoch >= args.num_train_epochs // 2:
-                    if epoch >= 1:
+                    if epoch >= args.num_train_epochs // 2:
+                    # if epoch >= 1:
                         prompts_probs.scatter_(1, smallest_k_idces, 0.0)
                         prompts_probs.grad.scatter_(1, smallest_k_idces, 0.0)
                         param_state = prompt_optimizer.state[prompts_probs]
-                        param_state['grads'].scatter_(1, smallest_k_idces, 0.0)
-                        param_state['amsgrads'].scatter_(1, smallest_k_idces, 0.0)
-                        param_state['exp_avgs'].scatter_(1, smallest_k_idces, 0.0)
-                        param_state['step'].scatter_(1, smallest_k_idces, 0.0)
-                        param_state['exp_avg_sqs'].scatter_(1, smallest_k_idces, 0.0)
-                        param_state['max_exp_avg_sqs'].scatter_(1, smallest_k_idces, 0.0)
+                        if len(param_state) != 0:
+                            param_state['exp_avg'].scatter_(1, smallest_k_idces, 0.0)
+                            param_state['exp_avg_sq'].scatter_(1, smallest_k_idces, 0.0)
+                            # param_state['step'].scatter_(1, smallest_k_idces, 0.0)
+                            # param_state['exp_avg_grad'].scatter_(1, smallest_k_idces, 0.0)
 
                     torch.nn.utils.clip_grad_norm_(prompts_probs, 3)
                     
@@ -668,8 +667,8 @@ def main():
                     if args.projection_type == "Euclidean":
                         prompt_optimizer.step()
                         constrainScoreByWholeExact(prompts_probs)
-                        
-                        assert torch.allclose(prompts_probs.gather(1, smallest_k_idces), torch.zeros_like(smallest_k_idces))
+                        if epoch >= args.num_train_epochs // 2:
+                            assert torch.allclose(prompts_probs.gather(1, smallest_k_idces).to(torch.float32), torch.zeros_like(smallest_k_idces, dtype=torch.float32))
 
 
                     elif args.projection_type == "KL":
@@ -878,7 +877,7 @@ def test(args, model, test_dataloader, metric, accelerator, epoch, results, prom
         logger.info(f"epoch {epoch}: {test_metric}")
         if args.use_wandb:
             for key in test_metric.keys():
-                eval_key = 'Black_test_' + key
+                eval_key = 'Black_test_TOPK' + key
                 wandb.log({eval_key: test_metric[key]})
             if args.task_name == 'mnli':
                 for key in test_metric_mm.keys():

@@ -1,2 +1,4 @@
 pmi/*
+__pycache__/*
+dataset/*
 wandb/*

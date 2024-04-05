@@ -175,6 +175,7 @@ def parse_args():
     parser.add_argument("--use_ngram", default=True, type=bool, help="If True, will extract ngrams and use them.")
     parser.add_argument("--api_limit", type=int, default=8000 , help="The limit of the API request")
     parser.add_argument("--projection_type", default="Euclidean", choices=["Euclidean", "KL"], help="Projection type to be used.")
+    parser.add_argument("--kvoc", type=int, default=10, help="Size of the smaller vocabulary.")
     args = parser.parse_args()
 
     args.train_file = './dataset/' + args.file_name + '/train.csv' if args.file_name else None
@@ -254,6 +255,9 @@ def main():
         level=logging.INFO,
     )
     logger.info(accelerator.state)
+    
+    
+    
 
     # Setup logging, we only want one process per machine to log things on the screen.
     # accelerator.is_local_main_process is only True for one process per machine.
@@ -639,12 +643,35 @@ def main():
                     for k in range(args.sample_size):
                         prompts_probs.grad += 1 / (args.sample_size - 1) * (loss_list[k] - loss_avg) * derivative[k]
                     
+                    
+                    
+                    # if epoch == args.num_train_epochs // 2:   # maybe rather take the best from all previous training, though that would somehow break the coherence with other methods
+                    if epoch == 1:   # maybe rather take the best from all previous training, though that would somehow break the coherence with other methods
+                        smallest_k_idces = torch.topk(prompts_probs, k=prompt_search_space - args.kvoc, dim=1, largest=False).indices
+                        
+                    # if epoch >= args.num_train_epochs // 2:
+                    if epoch >= 1:
+                        prompts_probs.scatter_(1, smallest_k_idces, 0.0)
+                        prompts_probs.grad.scatter_(1, smallest_k_idces, 0.0)
+                        param_state = prompt_optimizer.state[prompts_probs]
+                        param_state['grads'].scatter_(1, smallest_k_idces, 0.0)
+                        param_state['amsgrads'].scatter_(1, smallest_k_idces, 0.0)
+                        param_state['exp_avgs'].scatter_(1, smallest_k_idces, 0.0)
+                        param_state['step'].scatter_(1, smallest_k_idces, 0.0)
+                        param_state['exp_avg_sqs'].scatter_(1, smallest_k_idces, 0.0)
+                        param_state['max_exp_avg_sqs'].scatter_(1, smallest_k_idces, 0.0)
+
                     torch.nn.utils.clip_grad_norm_(prompts_probs, 3)
+                    
                     
                     # After computing gradients
                     if args.projection_type == "Euclidean":
                         prompt_optimizer.step()
                         constrainScoreByWholeExact(prompts_probs)
+                        
+                        assert torch.allclose(prompts_probs.gather(1, smallest_k_idces), torch.zeros_like(smallest_k_idces))
+
+
                     elif args.projection_type == "KL":
                         # eta = prompt_optimizer.param_groups[0]['lr']
                         eta = args.prompt_learning_rate

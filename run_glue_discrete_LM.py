@@ -123,7 +123,16 @@ def constrainScoreByWholeExact(prompt_probs):
         prompt_probs[i].sub_(v).clamp_(0, 1)
         
         
-# def constrain_by_sparsity(prompt_probs):
+def constrain_by_sparsity(prompt_probs):
+    for i in range(len(prompt_probs)):
+        topkidces = torch.topk(prompt_probs[i]).indices
+        v, itr = solve_v_total_exact(prompt_probs[topkidces])
+        prompt_probs[i, topkidces].sub_(v).clamp_(0, 1)
+        
+        mask = torch.ones(prompt_probs[i].size(), dtype=torch.bool)
+        mask[topkidces] = False
+        prompt_probs[i, mask] = 0.0
+        assert prompt_probs[i, mask].sum() == 0.0
     
 
 def exponential_gradient_update(pi, gradients, learning_rate):

@@ -24,7 +24,7 @@ for seed in "${seeds[@]}"; do
     --sample_size 20 --prompt_length 10 \
     --prompt_search_space 200 \
     --api_limit 8000 --ce_loss True \
-    --projection_type sparse
+    --projection_type HT
 done
 
 # # GPT-based experiments

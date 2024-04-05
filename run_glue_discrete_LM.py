@@ -123,9 +123,9 @@ def constrainScoreByWholeExact(prompt_probs):
         prompt_probs[i].sub_(v).clamp_(0, 1)
         
         
-def constrain_by_sparsity(prompt_probs):
+def constrain_by_sparsity(prompt_probs, k=None):
     for i in range(len(prompt_probs)):
-        topkidces = torch.topk(prompt_probs[i]).indices
+        topkidces = torch.topk(prompt_probs[i], k=k).indices  # TODO: make this more programmatic
         v, itr = solve_v_total_exact(prompt_probs[topkidces])
         prompt_probs[i, topkidces].sub_(v).clamp_(0, 1)
         
@@ -188,6 +188,7 @@ def parse_args():
     parser.add_argument("--use_ngram", default=True, type=bool, help="If True, will extract ngrams and use them.")
     parser.add_argument("--api_limit", type=int, default=8000 , help="The limit of the API request")
     parser.add_argument("--projection_type", default="Euclidean", choices=["Euclidean", "KL"], help="Projection type to be used.")
+    parser.add_argument("--kht", default=100, type=int, help="k to keep for sparse projection")
     args = parser.parse_args()
 
     args.train_file = './dataset/' + args.file_name + '/train.csv' if args.file_name else None
@@ -658,6 +659,9 @@ def main():
                     if args.projection_type == "Euclidean":
                         prompt_optimizer.step()
                         constrainScoreByWholeExact(prompts_probs)
+                    elif args.projection_type == "HT":
+                        prompt_optimizer.step()
+                        constrain_by_sparsity(prompts_probs, k=args.kht)
                     elif args.projection_type == "KL":
                         # eta = prompt_optimizer.param_groups[0]['lr']
                         eta = args.prompt_learning_rate

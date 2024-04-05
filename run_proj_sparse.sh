@@ -10,7 +10,7 @@
 # --api_limit 8000 --ce_loss True \
 # --projection_type KL
 
-seeds=(3407)
+seeds=(123 42 20 10 1)
 
 # Loop through each seed and run the experiment
 for seed in "${seeds[@]}"; do
@@ -24,7 +24,8 @@ for seed in "${seeds[@]}"; do
     --sample_size 20 --prompt_length 10 \
     --prompt_search_space 200 \
     --api_limit 8000 --ce_loss True \
-    --projection_type HT
+    --projection_type HT \
+    --kht 10
 done
 
 # # GPT-based experiments

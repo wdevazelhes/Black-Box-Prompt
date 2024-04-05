@@ -187,7 +187,7 @@ def parse_args():
     parser.add_argument("--k_shot", default=-1, type=int, help="-1 denotes full-shot")
     parser.add_argument("--use_ngram", default=True, type=bool, help="If True, will extract ngrams and use them.")
     parser.add_argument("--api_limit", type=int, default=8000 , help="The limit of the API request")
-    parser.add_argument("--projection_type", default="Euclidean", choices=["Euclidean", "KL"], help="Projection type to be used.")
+    parser.add_argument("--projection_type", default="Euclidean", choices=["Euclidean", "KL", "HT"], help="Projection type to be used.")
     parser.add_argument("--kht", default=100, type=int, help="k to keep for sparse projection")
     args = parser.parse_args()
 
@@ -254,9 +254,12 @@ def main():
                          + str(args.num_train_epochs) + str(args.seed) + str(args.prompt_search_space) + ce_loss_string #'dataset/CI/train.csv1020.0013042160.01falseFALSE'
 
     if args.use_wandb:
+        namexprmnt = args.projection_type+"-"+args.task_name+"-seed"+str(args.seed)
+        if args.projection_type == "HT":
+            namexprmnt += str(args.kht)
         args.group_name = "RoBERTa_BDPL_" + task_name
         wandb.init(config=args, 
-                   name=args.projection_type+"-"+args.task_name+"-seed"+str(args.seed), 
+                   name=namexprmnt, 
                    project="blackbox_prompt", group=args.group_name)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.

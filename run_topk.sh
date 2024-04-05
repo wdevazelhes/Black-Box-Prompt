@@ -26,7 +26,8 @@ for seed in "${seeds[@]}"; do
     --sample_size 20 --prompt_length 10 \
     --prompt_search_space 200 \
     --api_limit 8000 --ce_loss True \
-    --projection_type Euclidean
+    --projection_type Euclidean \
+    --prompt_search_space 50
 done
 
 

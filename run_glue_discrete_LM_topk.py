@@ -243,7 +243,7 @@ def main():
     if args.use_wandb:
         args.group_name = "RoBERTa_BDPL_" + task_name
         wandb.init(config=args, 
-                   name=args.projection_type+"-"+args.task_name+"-seed"+str(args.seed)+'topk', 
+                   name=args.projection_type+"-"+args.task_name+"-seed"+str(args.seed)+'topk'+str(args.kvoc), 
                    project="blackbox_prompt", group=args.group_name)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.

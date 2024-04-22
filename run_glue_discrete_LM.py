@@ -127,14 +127,27 @@ def constrain_by_sparsity(prompt_probs, k=None):
     for i in range(len(prompt_probs)):
         topkidces = torch.topk(prompt_probs[i], k=k).indices  # TODO: make this more programmatic
         v, itr = solve_v_total_exact(prompt_probs[i, topkidces])
+        # assert torch.sum(torch.isnan(prompt_probs[i, topkidces])) == 0
+        # assert torch.sum(torch.isnan(v)) == 0
         prompt_probs[i, topkidces] = prompt_probs[i, topkidces] - v
         prompt_probs[i, topkidces] = prompt_probs[i, topkidces].clamp(0, 1)
         # why is it not 0 here ? 
         mask = torch.ones(prompt_probs[i].size(), dtype=torch.bool)
         mask[topkidces] = False
-        prompt_probs[i, mask] = 0.0
-        assert prompt_probs[i, mask].sum() == 0.0
-        assert torch.all(prompt_probs[i] >= 0)
+        
+        
+        # very dirty trick to avoid 0 gradient
+        th = 0.0005
+        prompt_probs[i, prompt_probs[i] < th] = th
+        prompt_probs[i] /= prompt_probs[i].sum()
+        
+        
+        print('vector0.: ')
+        print(prompt_probs[i])
+        print('summation: ')
+        print((prompt_probs[i] >= 0.).sum())
+        # assert prompt_probs[i, mask].sum() == 0.0
+        # assert torch.all(prompt_probs[i] >= 0.)
     # return prompt_probs  # same here, maybe need to double check
     
 
@@ -666,8 +679,13 @@ def main():
                         prompt_optimizer.step()
                         constrainScoreByWholeExact(prompts_probs)
                     elif args.projection_type == "HT":
+                        print('=========================')
+                        print(f'before: {prompts_probs}')
                         prompt_optimizer.step()
+                        print(f'after update: {prompts_probs}')
                         constrain_by_sparsity(prompts_probs, k=args.kht)
+                        print(f'after projection: {prompts_probs}')
+                        print('====================================== end =============')
                     elif args.projection_type == "KL":
                         # eta = prompt_optimizer.param_groups[0]['lr']
                         eta = args.prompt_learning_rate
@@ -683,6 +701,13 @@ def main():
                         completed_steps += 1
                     if completed_steps >= args.max_train_steps:
                         break
+                # # added by will
+                # eval_result = evaluate(args, model, eval_dataloader, metric, ce_loss, config, accelerator, epoch, eval_results, prompts_probs=prompts_probs, prompt_length=prompt_length, tokenizer=tokenizer)
+                # if eval_result >= best_eval_result:
+                #     best_eval_result = eval_result
+                #     best_prompts_probs = prompts_probs
+                # test(args, model, test_dataloader, metric, accelerator, step, test_results, prompts_probs=best_prompts_probs, prompt_length=prompt_length, tokenizer=tokenizer, test_dataloader_mm=test_dataloader_mm)
+                # end added by will
         except ApiCallLimitError:
             pass
 
@@ -773,7 +798,7 @@ def evaluate(args,  model, eval_dataloader, metric, ce_loss,config, accelerator,
 
     return eval_result
 
-def test(args, model, test_dataloader, metric, accelerator, epoch, results, prompts_probs=None, prompt_length=None, tokenizer=None, test_dataloader_mm=None):
+def test(args, model, test_dataloader, metric, accelerator, trainstep, results, prompts_probs=None, prompt_length=None, tokenizer=None, test_dataloader_mm=None):
     if args.task_name == None or args.k_shot >= 0:
         prompts_discrete_indices = prompts_probs.argmax(1)
 
@@ -871,7 +896,8 @@ def test(args, model, test_dataloader, metric, accelerator, epoch, results, prom
         results.append(test_result)
 
         logger.info("** test **")
-        logger.info(f"epoch {epoch}: {test_metric}")
+        logger.info(f"epoch {trainstep}: {test_metric}")
+        # logger.info(f"epoch {epoch}: {test_metric}")  # modified by will
         if args.use_wandb:
             for key in test_metric.keys():
                 eval_key = 'Black_test_' + key
